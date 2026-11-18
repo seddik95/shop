@@ -1,6 +1,6 @@
 
 
-Mini e-commerce full-stack réalisé pour le test technique ALTEN (l'énoncé d'origine est dans [CONSIGNES.md](CONSIGNES.md)).
+Mini e-commerce full-stack réalisé (l'énoncé d'origine est dans [CONSIGNES.md](CONSIGNES.md)).
 
 - **Back** : Spring Boot 3.2 / Java 17, JPA, H2 (fichier), JWT (`back/`)
 - **Front** : Angular 18 (composants standalone, signals) + PrimeNG (`front/`)
