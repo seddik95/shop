@@ -1,101 +1,148 @@
-# Consignes
+# ALTEN Shop
 
-- Vous êtes développeur front-end : vous devez réaliser les consignes décrites dans le chapitre [Front-end](#Front-end)
+Mini e-commerce full-stack réalisé pour le test technique ALTEN (l'énoncé d'origine est dans [CONSIGNES.md](CONSIGNES.md)).
 
-- Vous êtes développeur back-end : vous devez réaliser les consignes décrites dans le chapitre [Back-end](#Back-end) (*)
+- **Back** : Spring Boot 3.2 / Java 17, JPA, H2 (fichier), JWT (`back/`)
+- **Front** : Angular 18 (composants standalone, signals) + PrimeNG (`front/`)
 
-- Vous êtes développeur full-stack : vous devez réaliser les consignes décrites dans le chapitre [Front-end](#Front-end) et le chapitre [Back-end](#Back-end) (*)
+## Fonctionnalités
 
-(*) Afin de tester votre API, veuillez proposer une stratégie de test appropriée.
+| Domaine | Contenu |
+|---|---|
+| Boutique | Liste détaillée des produits, recherche, filtre par catégorie, pagination, ajout au panier |
+| Panier | Badge de quantité, page panier, ajustement des quantités (+/−), suppression, total |
+| Liste d'envie | Ajout/retrait par un cœur sur chaque produit, page dédiée |
+| Contact | Email et message obligatoires, message < 300 caractères, confirmation « Demande de contact envoyée avec succès » |
+| Compte | Inscription et connexion (JWT) |
+| Admin | Création, modification et suppression de produits, réservées à `admin@admin.com` |
 
-## Front-end
+## Architecture
 
-Le site de e-commerce d'Alten a besoin de s'enrichir de nouvelles fonctionnalités.
-
-### Partie 1 : Shop
-
-- Afficher toutes les informations pertinentes d'un produit sur la liste
-- Permettre d'ajouter un produit au panier depuis la liste 
-- Permettre de supprimer un produit du panier
-- Afficher un badge indiquant la quantité de produits dans le panier
-- Permettre de visualiser la liste des produits qui composent le panier.
-
-### Partie 2
-
-- Créer un nouveau point de menu dans la barre latérale ("Contact")
-- Créer une page "Contact" affichant un formulaire
-- Le formulaire doit permettre de saisir son email, un message et de cliquer sur "Envoyer"
-- Email et message doivent être obligatoirement remplis, message doit être inférieur à 300 caractères.
-- Quand le message a été envoyé, afficher un message à l'utilisateur : "Demande de contact envoyée avec succès".
-
-### Bonus : 
-
-- Ajouter un système de pagination et/ou de filtrage sur la liste des produits
-- On doit pouvoir visualiser et ajuster la quantité des produits depuis la liste et depuis le panier 
-
-## Back-end
-
-### Partie 1
-
-Développer un back-end permettant la gestion de produits définis plus bas.
-Vous pouvez utiliser la technologie de votre choix parmi la liste suivante :
-
-- Node.js/Express
-- Java/Spring Boot
-- C#/.net Core
-- PHP/Symphony : Utilisation d'API Platform interdite
-
-Un produit a les caractéristiques suivantes : 
-
-``` typescript
-class Product {
-  id: number;
-  code: string;
-  name: string;
-  description: string;
-  image: string;
-  category: string;
-  price: number;
-  quantity: number;
-  internalReference: string;
-  shellId: number;
-  inventoryStatus: "INSTOCK" | "LOWSTOCK" | "OUTOFSTOCK";
-  rating: number;
-  createdAt: number;
-  updatedAt: number;
-}
+```
+product-trial-master/
+├── back/                          Spring Boot
+│   ├── pom.xml
+│   ├── postman/                   Collection Postman (tests d'API)
+│   └── src/
+│       ├── main/java/com/alten/shop/
+│       │   ├── model/             Product, AppUser, CartItem, WishlistItem (entités JPA)
+│       │   ├── repo/              Repositories Spring Data
+│       │   ├── service/           Logique métier (Auth, Product, Cart, Wishlist)
+│       │   ├── security/          JwtService, JwtAuthFilter, SecurityConfig
+│       │   ├── web/               Contrôleurs REST
+│       │   └── DataSeeder.java    Charge products.json au premier lancement
+│       ├── main/resources/        application.properties, products.json
+│       └── test/                  ShopApiTest, ErrorStatusTest
+└── front/src/app/
+    ├── auth/                      AuthService, intercepteur HTTP, guard, page de connexion
+    ├── products/                  data-access, liste produits, formulaire admin
+    ├── cart/                      CartService (signals) et page panier
+    ├── wishlist/                  WishlistService et page
+    ├── contact/                   Formulaire de contact (+ test unitaire)
+    └── shared/                    Accueil, menu latéral
 ```
 
-Le back-end créé doit pouvoir gérer les produits dans une base de données SQL/NoSQL ou dans un fichier json.
+Le back suit un découpage en couches `web → service → repo → model` : les contrôleurs ne contiennent que le mapping HTTP, la logique et les transactions sont dans les services.
 
-### Partie 2
+### Flux d'une requête
 
-- Imposer à l'utilisateur de se connecter pour accéder à l'API.
-  La connexion doit être gérée en utilisant un token JWT.  
-  Deux routes devront être créées :
-  * [POST] /account -> Permet de créer un nouveau compte pour un utilisateur avec les informations fournies par la requête.   
-    Payload attendu : 
-    ```
-    {
-      username: string,
-      firstname: string,
-      email: string,
-      password: string
-    }
-    ```
-  * [POST] /token -> Permet de se connecter à l'application.  
-    Payload attendu :  
-    ```
-    {
-      email: string,
-      password: string
-    }
-    ```
-    Une vérification devra être effectuée parmi tout les utilisateurs de l'application afin de connecter celui qui correspond aux infos fournies. Un token JWT sera renvoyé en retour de la reqûete.
-- Faire en sorte que seul l'utilisateur ayant le mail "admin@admin.com" puisse ajouter, modifier ou supprimer des produits. Une solution simple et générique devra être utilisée. Il n'est pas nécessaire de mettre en place une gestion des accès basée sur les rôles.
-- Ajouter la possibilité pour un utilisateur de gérer un panier d'achat pouvant contenir des produits.
-- Ajouter la possibilité pour un utilisateur de gérer une liste d'envie pouvant contenir des produits.
+```mermaid
+sequenceDiagram
+    participant UI as Angular
+    participant P as Proxy /api
+    participant F as JwtAuthFilter
+    participant S as SecurityConfig
+    participant C as Controller / Service
+    UI->>P: POST /api/products (Authorization: Bearer JWT)
+    P->>F: POST /products (préfixe /api retiré)
+    F->>F: vérifie la signature et l'expiration
+    F->>S: identité = email du jeton
+    S->>S: écriture sur /products/** : email = admin@admin.com ?
+    S->>C: autorisé (sinon 401 ou 403)
+    C-->>UI: 201 Created
+```
 
-## Bonus
+## Choix techniques
 
-Vous pouvez ajouter des tests Postman ou Swagger pour valider votre API
+### Back-end
+
+| Choix | Raison |
+|---|---|
+| **H2 en fichier** (`back/data/`) | Persistance SQL sans rien installer. Se remplace par PostgreSQL en changeant l'URL et la dépendance. |
+| **Spring Data JPA**, `ddl-auto=update` | Simple pour un test technique. En production : migrations Flyway/Liquibase. |
+| **Contraintes d'unicité** (email, couple utilisateur/produit) | Garanties par la base, pas seulement par le code. |
+| **Seed depuis `products.json`** | Données de démonstration identiques à celles du front d'origine. |
+| **Bean Validation** (`@Valid`) | Rejet des données invalides en 400. |
+| **springdoc** | Swagger UI sur `/swagger-ui.html`. |
+
+### Sécurité
+
+- **Mots de passe** hachés avec **BCrypt** (jamais stockés ni renvoyés en clair).
+- **JWT signé HS256**, renvoyé par `POST /token`, durée de vie 120 minutes. Le secret doit faire au moins 32 octets : l'application refuse de démarrer sinon. En production, il se fournit par la variable d'environnement `APP_JWT_SECRET` ; la valeur par défaut ne sert qu'au développement.
+- **API sans session** (`STATELESS`) : CSRF désactivé, car il n'y a pas de cookie à protéger.
+- **Règle admin unique et générique** dans `SecurityConfig` : les écritures (POST, PUT, PATCH, DELETE) sur `/products/**` exigent que l'email du jeton soit `admin@admin.com`. Pas de gestion de rôles, comme demandé.
+- **Codes HTTP distincts** : 401 = non authentifié ou jeton invalide ; 403 = authentifié mais non autorisé.
+- **Panier et liste d'envie** rattachés à l'utilisateur du jeton (jamais à un identifiant fourni par le client) : un utilisateur ne peut pas lire ni modifier ceux d'un autre.
+- **CORS** limité à `http://localhost:4200`.
+- **Piège corrigé : le 401 qui masquait les erreurs.** Spring traite les erreurs (400, 403, 404) par un second passage interne sur `/error`, qui ne porte pas le jeton. Avec `anyRequest().authenticated()`, il répondait 401 à la place du vrai statut. Le correctif est `dispatcherTypeMatchers(ERROR).permitAll()` ; `ErrorStatusTest` le couvre, sur un vrai Tomcat.
+
+### Front-end
+
+| Choix | Raison |
+|---|---|
+| **Composants standalone + signals** | Pas de NgModule ; état réactif simple. |
+| **Badge du panier** = `computed` sur les lignes du panier | Il se met à jour tout seul à chaque changement. |
+| **Intercepteur HTTP** | Ajoute `Authorization: Bearer …` aux appels `/api/*`. |
+| **Guard de route** | `/products` et `/cart` exigent une connexion. |
+| **Jeton dans `localStorage`** | Simple et suffisant ici. Compromis : exposé en cas de XSS ; un cookie `HttpOnly` serait plus sûr en production. |
+| **`isAdmin` côté front** | Sert seulement à afficher ou masquer les boutons. La vraie règle est appliquée par le back. |
+| **Panier et wishlist synchronisés avec le back** | Les données suivent l'utilisateur d'un appareil à l'autre. |
+| **Contact** : `Validators.maxLength(299)` | Équivaut à « inférieur à 300 ». L'envoi est simulé, car l'énoncé ne demande aucun endpoint. |
+| **Proxy `/api` → `localhost:8080`** | Évite les problèmes de CORS en développement. |
+
+## API
+
+| Méthode | Route | Accès |
+|---|---|---|
+| POST | `/account` | public |
+| POST | `/token` | public |
+| GET | `/products`, `/products/{id}` | connecté |
+| POST, PATCH, DELETE | `/products`, `/products/{id}` | admin |
+| GET, POST | `/cart` | connecté |
+| PATCH, DELETE | `/cart/{productId}` | connecté |
+| DELETE | `/cart` | connecté (vide le panier) |
+| GET | `/wishlist` | connecté |
+| POST, DELETE | `/wishlist/{productId}` | connecté |
+
+## Stratégie de test
+
+- **`ShopApiTest`** (MockMvc) : 401 sans jeton, 401 avec un mauvais mot de passe, 403 pour un utilisateur normal et 201 pour l'admin sur l'écriture de produits, parcours complet du panier et isolation entre utilisateurs.
+- **`ErrorStatusTest`** (vrai Tomcat, port aléatoire) : les erreurs gardent leur statut réel (400, 404, 403, 401). MockMvc ne simule pas le passage interne sur `/error`, d'où un test séparé.
+- **Collection Postman** (`back/postman/`) : scénario de bout en bout avec assertions, sur un back lancé.
+- **Front** : test unitaire du formulaire de contact (champs obligatoires, limite de 299 caractères, message de succès).
+
+## Lancer le projet
+
+Prérequis : JDK 17, Maven, Node 18+.
+
+```bash
+# Back (port 8080)
+cd back
+mvn spring-boot:run
+
+# Front (port 4200), dans un autre terminal
+cd front
+npm install --legacy-peer-deps
+npm start
+```
+
+Ouvrir http://localhost:4200. Pour le compte admin, s'inscrire avec `admin@admin.com`.
+
+Tests du back : `cd back && mvn test`. Swagger : http://localhost:8080/swagger-ui.html.
+
+## Limites connues et pistes d'amélioration
+
+- Pas d'images produits : le seed ne fournit que des noms de fichiers (à déposer dans `front/src/assets/images/`).
+- Pas de contrôle de stock à l'ajout au panier ni de passage de commande.
+- Pas de rafraîchissement du jeton : à l'expiration, l'utilisateur est renvoyé à la connexion.
+- Migrations de base à ajouter (Flyway) et PostgreSQL pour la production.
