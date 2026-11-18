@@ -1,4 +1,4 @@
-# ALTEN Shop
+
 
 Mini e-commerce full-stack réalisé pour le test technique ALTEN (l'énoncé d'origine est dans [CONSIGNES.md](CONSIGNES.md)).
 
