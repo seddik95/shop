@@ -1,0 +1,42 @@
+<header class="app-header">
+    <a class="brand" routerLink="/home" [attr.aria-label]="title">
+        <img src="assets/icons/icon-72x72.png" alt="" />
+        <span>{{ title }}</span>
+    </a>
+
+    <div class="header-actions">
+        @if (auth.isLoggedIn()) {
+            <a class="cart-link" routerLink="/cart" aria-label="Ouvrir le panier">
+                <i class="pi pi-shopping-cart" pBadge [value]="cart.count().toString()" severity="danger"></i>
+            </a>
+            <span class="account-email">{{ auth.email() }}</span>
+            <p-button label="Déconnexion" icon="pi pi-sign-out" severity="secondary" [outlined]="true" (onClick)="auth.logout()" />
+        } @else {
+            <a class="login-link" routerLink="/login">
+                <i class="pi pi-user" aria-hidden="true"></i>
+                <span>Connexion</span>
+            </a>
+        }
+    </div>
+</header>
+
+<main class="app-main" [class.authenticated]="auth.isLoggedIn()">
+    @if (auth.isLoggedIn()) {
+        <p-splitter [panelSizes]="[16, 84]" [style]="{ height: '100%' }" styleClass="app-splitter">
+            <ng-template pTemplate>
+                <aside class="sidebar">
+                    <app-panel-menu />
+                </aside>
+            </ng-template>
+            <ng-template pTemplate>
+                <section class="app-content">
+                    <router-outlet></router-outlet>
+                </section>
+            </ng-template>
+        </p-splitter>
+    } @else {
+        <section class="public-content">
+            <router-outlet></router-outlet>
+        </section>
+    }
+</main>

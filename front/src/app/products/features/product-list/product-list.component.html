@@ -1,0 +1,95 @@
+<section class="catalog">
+    <header class="catalog-heading">
+        <div>
+            <span class="section-eyebrow">LA SÉLECTION ALTEN</span>
+            <h1>Des essentiels qui font la différence.</h1>
+            <p>Découvrez notre sélection et trouvez votre prochain coup de cœur.</p>
+        </div>
+        @if (auth.isAdmin()) {
+            <p-button label="Créer un produit" icon="pi pi-plus" (onClick)="onCreate()" styleClass="create-product-button" />
+        }
+    </header>
+
+    <div class="catalog-toolbar">
+        <div class="catalog-search">
+            <i class="pi pi-search" aria-hidden="true"></i>
+            <input pInputText type="search" aria-label="Rechercher un produit" placeholder="Rechercher un produit..."
+                [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        </div>
+        <p-dropdown [options]="categories()" [ngModel]="category()" (ngModelChange)="category.set($event)"
+            placeholder="Toutes les catégories" [showClear]="true" ariaLabel="Filtrer par catégorie" />
+        <span class="result-count">{{ filtered().length }} article{{ filtered().length === 1 ? "" : "s" }}</span>
+    </div>
+
+    @if (filtered().length === 0) {
+        <div class="empty-results">
+            <i class="pi pi-search" aria-hidden="true"></i>
+            <h2>Aucun résultat</h2>
+            <p>Essayez un autre mot-clé ou une autre catégorie.</p>
+        </div>
+    } @else {
+        <p-dataView [value]="filtered()" [paginator]="true" [rows]="6" [rowsPerPageOptions]="[6, 12, 24]">
+            <ng-template pTemplate="list" let-products>
+                <div class="products-grid">
+                    @for (product of products; track product.id) {
+                        <article class="product-card">
+                            <div class="product-art">
+                                <span class="product-art-mark" aria-hidden="true">{{ product.name.charAt(0) }}</span>
+                                <img [src]="'assets/images/' + product.image" [alt]="product.name"
+                                    (error)="$any($event.target).style.display = 'none'" />
+                                <p-button [icon]="wishlist.has(product.id) ? 'pi pi-heart-fill' : 'pi pi-heart'"
+                                    [text]="true" [rounded]="true" severity="danger" styleClass="wishlist-button"
+                                    [attr.aria-label]="wishlist.has(product.id) ? 'Retirer de la liste d’envies' : 'Ajouter à la liste d’envies'"
+                                    (onClick)="wishlist.toggle(product)" />
+                            </div>
+                            <div class="product-info">
+                                <div class="product-category">{{ product.category }}</div>
+                                <div class="product-name">{{ product.name }}</div>
+                                <p class="product-description">{{ product.description }}</p>
+                                <div class="product-meta">
+                                    <span><i class="pi pi-star-fill" aria-hidden="true"></i> {{ product.rating }}/5</span>
+                                    <p-tag [value]="product.inventoryStatus" [severity]="severity(product.inventoryStatus)" />
+                                </div>
+                                <div class="product-buy-row">
+                                    <strong>{{ product.price | currency: "EUR" }}</strong>
+                                    @if (cart.quantityOf(product.id) > 0) {
+                                        <div class="quantity-control">
+                                            <p-button icon="pi pi-minus" size="small" [rounded]="true" aria-label="Diminuer la quantité"
+                                                (onClick)="cart.setQuantity(product.id, cart.quantityOf(product.id) - 1)" />
+                                            <span>{{ cart.quantityOf(product.id) }}</span>
+                                            <p-button icon="pi pi-plus" size="small" [rounded]="true" aria-label="Augmenter la quantité"
+                                                (onClick)="cart.setQuantity(product.id, cart.quantityOf(product.id) + 1)" />
+                                        </div>
+                                    } @else {
+                                        <p-button icon="pi pi-shopping-bag" label="Ajouter"
+                                            [disabled]="product.inventoryStatus === 'OUTOFSTOCK'"
+                                            (onClick)="cart.add(product.id)" styleClass="add-to-cart-button" />
+                                    }
+                                </div>
+                                @if (auth.isAdmin()) {
+                                    <div class="admin-actions">
+                                        <p-button label="Modifier" icon="pi pi-pencil" [text]="true" (onClick)="onUpdate(product)" />
+                                        <p-button label="Supprimer" icon="pi pi-trash" [text]="true" severity="danger" (onClick)="onDelete(product)" />
+                                    </div>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            </ng-template>
+        </p-dataView>
+    }
+</section>
+
+<p-dialog [(visible)]="isDialogVisible"
+    [style]="{ width: '50vw' }"
+    header="Ajout/Edition produit">
+    @if (saveError()) {
+        <p class="save-error" role="alert">{{ saveError() }}</p>
+    }
+    <app-product-form
+        [product]="editedProduct()"
+        (save)="onSave($event)"
+        (cancel)="onCancel()"
+    />
+</p-dialog>
